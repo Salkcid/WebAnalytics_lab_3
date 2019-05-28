@@ -1,5 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 const { MongoClient } = require('mongodb');
+const { findSignalWord } = require('./analyze.js');
 
 const config = 'mongodb://localhost:27017';
 const collectionName = 'logs';
@@ -7,16 +8,27 @@ const collectionName = 'logs';
 const token = '807050758:AAELM7qJ3pCYsN-MhElTm1sEA_IxgaUlJ80';
 const bot = new TelegramBot(token, { polling: true });
 
+const signalWords = [
+  'зритель',
+  'перевод',
+  'развертываться',
+  'дергать',
+  'наклонясь',
+];
+
 bot.on('message', async (msg) => {
-    const { result } = await insert(collectionName, {
-      username: msg.from.username,
-      date: Date(msg.date),
-      text: msg.text,
-    });
+    const detected = findSignalWord(signalWords, msg.text);
 
-    console.log(result);
+    if (detected.size) {
+      const { result } = await insert(collectionName, {
+        username: msg.from.username,
+        date: Date(msg.date),
+        text: msg.text,
+      });
+      console.log(result);
+    }
 
-    bot.sendMessage(msg.chat.id, `You send me:\n${msg.text}`);
+    bot.sendMessage(msg.chat.id, JSON.stringify(Array.from(detected.entries()), null, 2));
 });
 
 
